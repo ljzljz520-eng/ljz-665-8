@@ -1,0 +1,27 @@
+{
+  "menuCode": "warehouse_forklift_archive",
+  "menuName": "叉车档案",
+  "menuType": "page",
+  "parentMenu": {
+    "menuCode": "warehouse_manage",
+    "menuName": "仓库管理"
+  },
+  "route": {
+    "path": "/warehouse/forklift-archive",
+    "component": "web/forklift-archive/index.html",
+    "iframeUrl": "/web/forklift-archive/"
+  },
+  "permission": {
+    "permCode": "warehouse:forkliftArchive:view",
+    "actions": [
+      { "permCode": "warehouse:forkliftArchive:query",  "name": "查询" },
+      { "permCode": "warehouse:forkliftArchive:add",    "name": "新增" },
+      { "permCode": "warehouse:forkliftArchive:edit",   "name": "编辑" },
+      { "permCode": "warehouse:forkliftArchive:delete", "name": "删除" },
+      { "permCode": "warehouse:forkliftArchive:export", "name": "导出" }
+    ]
+  },
+  "icon": "forklift",
+  "sort": 10,
+  "visible": true
+}

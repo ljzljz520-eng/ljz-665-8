@@ -1,0 +1,13 @@
+{
+  "name": "warehouse-forklift-archive",
+  "version": "1.0.0",
+  "description": "仓库叉车档案页（低代码平台菜单页面）",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

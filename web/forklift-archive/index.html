@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>仓库叉车档案</title>
+  <!-- 低代码平台嵌入时可直接使用平台内置的 Vue / Element Plus 资源 -->
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
+  <style>
+    body { margin: 0; background: #f5f7fa; font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    #forkliftArchiveApp { padding: 16px; }
+    .fa-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .fa-toolbar .spacer { flex: 1; }
+    .fa-card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .fa-pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+<div id="forkliftArchiveApp">
+  <div class="fa-card">
+    <!-- 查询区：仓区筛选 -->
+    <div class="fa-toolbar">
+      <el-select v-model="queryForm.warehouseZone" placeholder="仓区" clearable style="width: 140px" @change="handleSearch">
+        <el-option v-for="z in dicts.warehouseZones" :key="z" :label="z" :value="z" />
+      </el-select>
+      <el-select v-model="queryForm.maintenanceStatus" placeholder="维修状态" clearable style="width: 140px" @change="handleSearch">
+        <el-option v-for="(label, key) in dicts.maintenanceStatus" :key="key" :label="label" :value="key" />
+      </el-select>
+      <el-input v-model="queryForm.keyword" placeholder="编号 / 型号 / 司机" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+      <div class="spacer"></div>
+      <el-button type="success" @click="handleExport">导出当前结果</el-button>
+      <el-button type="primary" @click="openEditDialog()">新增叉车</el-button>
+    </div>
+
+    <!-- 列表 -->
+    <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table-column prop="forkliftNo" label="叉车编号" width="110" />
+      <el-table-column prop="model" label="型号" min-width="150" />
+      <el-table-column prop="warehouseZone" label="仓区" width="90" />
+      <el-table-column prop="driver" label="司机" width="100" />
+      <el-table-column prop="annualInspectionDate" label="年检日期" width="120" />
+      <el-table-column label="维修状态" width="110">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.maintenanceStatus)">{{ dicts.maintenanceStatus[row.maintenanceStatus] || row.maintenanceStatus }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
+      <el-table-column label="操作" width="130" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+          <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="fa-pager">
+      <el-pagination background layout="total, prev, pager, next" :total="total"
+        :page-size="queryForm.pageSize" :current-page="queryForm.page"
+        @current-change="(p) => { queryForm.page = p; fetchList(); }" />
+    </div>
+  </div>
+
+  <!-- 编辑弹窗 -->
+  <el-dialog v-model="dialogVisible" :title="editForm.id ? '编辑叉车' : '新增叉车'" width="520px">
+    <el-form :model="editForm" label-width="90px">
+      <el-form-item label="叉车编号" required><el-input v-model="editForm.forkliftNo" /></el-form-item>
+      <el-form-item label="型号"><el-input v-model="editForm.model" /></el-form-item>
+      <el-form-item label="仓区">
+        <el-select v-model="editForm.warehouseZone" style="width: 100%">
+          <el-option v-for="z in dicts.warehouseZones" :key="z" :label="z" :value="z" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="司机"><el-input v-model="editForm.driver" /></el-form-item>
+      <el-form-item label="年检日期">
+        <el-date-picker v-model="editForm.annualInspectionDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+      </el-form-item>
+      <el-form-item label="维修状态">
+        <el-select v-model="editForm.maintenanceStatus" style="width: 100%">
+          <el-option v-for="(label, key) in dicts.maintenanceStatus" :key="key" :label="label" :value="key" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="备注"><el-input v-model="editForm.remark" type="textarea" :rows="2" /></el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="handleSave">保存</el-button>
+    </template>
+  </el-dialog>
+</div>
+
+<script>
+const { createApp, reactive, ref, onMounted } = Vue;
+
+const app = createApp({
+  setup() {
+    const API_BASE = '/api/warehouse/forklifts';
+
+    const dicts = reactive({ warehouseZones: [], maintenanceStatus: {} });
+    // 查询表单：与后端查询参数同名（默认命名规范）
+    const queryForm = reactive({ warehouseZone: '', maintenanceStatus: '', keyword: '', page: 1, pageSize: 10 });
+    const tableData = ref([]);
+    const total = ref(0);
+    const loading = ref(false);
+    const dialogVisible = ref(false);
+    const emptyForm = { id: null, forkliftNo: '', model: '', warehouseZone: '', driver: '', annualInspectionDate: '', maintenanceStatus: 'NORMAL', remark: '' };
+    const editForm = reactive({ ...emptyForm });
+
+    function buildQuery() {
+      const p = new URLSearchParams();
+      Object.entries(queryForm).forEach(([k, v]) => { if (v !== '' && v != null) p.append(k, v); });
+      return p.toString();
+    }
+
+    async function fetchList() {
+      loading.value = true;
+      try {
+        const res = await fetch(`${API_BASE}?${buildQuery()}`).then(r => r.json());
+        tableData.value = res.data.list;
+        total.value = res.data.total;
+      } finally { loading.value = false; }
+    }
+
+    function handleSearch() { queryForm.page = 1; fetchList(); }
+    function handleReset() { Object.assign(queryForm, { warehouseZone: '', maintenanceStatus: '', keyword: '', page: 1 }); fetchList(); }
+
+    // 导出：只导当前查询结果（携带与列表一致的筛选参数，不带分页）
+    function handleExport() {
+      const p = new URLSearchParams();
+      ['warehouseZone', 'maintenanceStatus', 'keyword'].forEach(k => { if (queryForm[k]) p.append(k, queryForm[k]); });
+      window.location.href = `${API_BASE}/export?${p.toString()}`;
+    }
+
+    function openEditDialog(row) {
+      Object.assign(editForm, emptyForm, row ? { ...row } : {});
+      dialogVisible.value = true;
+    }
+
+    async function handleSave() {
+      if (!editForm.forkliftNo) return ElementPlus.ElMessage.warning('请填写叉车编号');
+      const isEdit = !!editForm.id;
+      await fetch(isEdit ? `${API_BASE}/${editForm.id}` : API_BASE, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      }).then(r => r.json());
+      ElementPlus.ElMessage.success('保存成功');
+      dialogVisible.value = false;
+      fetchList();
+    }
+
+    async function handleDelete(row) {
+      await ElementPlus.ElMessageBox.confirm(`确认删除叉车「${row.forkliftNo}」？`, '提示', { type: 'warning' });
+      await fetch(`${API_BASE}/${row.id}`, { method: 'DELETE' }).then(r => r.json());
+      ElementPlus.ElMessage.success('已删除');
+      fetchList();
+    }
+
+    function statusTagType(s) {
+      return { NORMAL: 'success', REPAIRING: 'danger', PENDING: 'warning', SCRAPPED: 'info' }[s] || 'info';
+    }
+
+    onMounted(async () => {
+      const d = await fetch(`${API_BASE}/dicts`).then(r => r.json());
+      dicts.warehouseZones = d.data.warehouseZones;
+      dicts.maintenanceStatus = d.data.maintenanceStatus;
+      fetchList();
+    });
+
+    return { dicts, queryForm, tableData, total, loading, dialogVisible, editForm,
+      handleSearch, handleReset, handleExport, openEditDialog, handleSave, handleDelete, statusTagType, fetchList };
+  },
+});
+
+app.use(ElementPlus);
+app.mount('#forkliftArchiveApp');
+</script>
+</body>
+</html>
