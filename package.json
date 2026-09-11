@@ -5,7 +5,9 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "deploy": "node lowcode/deploy.js",
+    "deploy:dry-run": "node lowcode/deploy.js --dry-run"
   },
   "dependencies": {
     "express": "^4.19.2"

@@ -1,0 +1,36 @@
+{
+  "menuCode": "warehouse_forklift_archive",
+  "menuName": "叉车档案",
+  "parentMenu": {
+    "menuCode": "warehouse_manage",
+    "menuName": "仓库管理"
+  },
+  "routePath": "/warehouse/forklift-archive",
+  "iframeUrl": "https://wh.example.com/web/forklift-archive/",
+  "platformUrl": "https://lowcode.example.com",
+  "registerApi": "https://lowcode.example.com/api/open/menus",
+  "registerMethod": "POST",
+  "registerHttpStatus": 200,
+  "platformMenuId": "88231",
+  "permission": {
+    "permCode": "warehouse:forkliftArchive:view",
+    "actions": [
+      { "permCode": "warehouse:forkliftArchive:query",  "name": "查询" },
+      { "permCode": "warehouse:forkliftArchive:add",    "name": "新增" },
+      { "permCode": "warehouse:forkliftArchive:edit",   "name": "编辑" },
+      { "permCode": "warehouse:forkliftArchive:delete", "name": "删除" },
+      { "permCode": "warehouse:forkliftArchive:export", "name": "导出" }
+    ]
+  },
+  "mounted": true,
+  "verification": {
+    "pageUrl": "https://wh.example.com/web/forklift-archive/",
+    "pageHttpStatus": 200,
+    "pageReachable": true,
+    "apiUrl": "https://wh.example.com/api/warehouse/forklifts?page=1&pageSize=1",
+    "apiHttpStatus": 200,
+    "apiHealthy": true
+  },
+  "deployedAt": "2026-09-11T08:00:00.000Z",
+  "deployedBy": "zhangsan"
+}
