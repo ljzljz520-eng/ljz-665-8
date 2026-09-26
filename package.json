@@ -1,0 +1,9 @@
+{
+  "name": "forklift-archive-page",
+  "version": "1.0.0",
+  "private": true,
+  "description": "仓库叉车档案页（低代码平台自定义页面）",
+  "scripts": {
+    "start": "node mock-server.js"
+  }
+}

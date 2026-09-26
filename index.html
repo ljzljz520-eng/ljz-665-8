@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>叉车档案</title>
+  <!-- 低代码平台内网部署时，可将以下 CDN 资源下载到本地后改为相对路径 -->
+  <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/dist/index.css" />
+  <style>
+    [v-cloak] { display: none; }
+    body { margin: 0; background: #f5f7fa; }
+    .forklift-archive { padding: 16px; box-sizing: border-box; }
+    .forklift-archive__query { margin-bottom: 4px; }
+    .forklift-archive__toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 8px 0 12px;
+    }
+    .forklift-archive__summary { color: #909399; font-size: 13px; margin-right: 12px; }
+    .forklift-archive__toolbar-right { display: flex; align-items: center; }
+    .forklift-archive__pagination { margin-top: 12px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <div id="app" class="forklift-archive" v-cloak>
+    <el-card shadow="never">
+      <!-- 查询区 -->
+      <el-form class="forklift-archive__query" :inline="true" @submit.prevent>
+        <el-form-item label="仓区">
+          <el-select v-model="query.warehouseZone" placeholder="全部仓区" clearable style="width: 150px">
+            <el-option v-for="opt in warehouseZoneOptions" :key="opt.value"
+                       :label="opt.label" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键字">
+          <el-input v-model="query.keyword" placeholder="叉车编号 / 司机" clearable
+                    style="width: 200px" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <!-- 工具栏 -->
+      <div class="forklift-archive__toolbar">
+        <span>共 {{ total }} 条</span>
+        <div class="forklift-archive__toolbar-right">
+          <span class="forklift-archive__summary">当前筛选：{{ filterSummary }}</span>
+          <el-button type="primary" plain @click="handleExport">导出当前查询结果</el-button>
+        </div>
+      </div>
+
+      <!-- 列表 -->
+      <el-table v-loading="loading" :data="pagedList" border stripe style="width: 100%">
+        <el-table-column type="index" label="序号" width="60" :index="rowIndex" />
+        <el-table-column prop="forkliftNo" label="叉车编号" width="110" />
+        <el-table-column prop="model" label="型号" min-width="130" />
+        <el-table-column prop="warehouseZone" label="仓区" width="90">
+          <template #default="{ row }">{{ zoneLabel(row.warehouseZone) }}</template>
+        </el-table-column>
+        <el-table-column prop="driver" label="司机" width="100" />
+        <el-table-column prop="annualInspectionDate" label="年检日期" width="170">
+          <template #default="{ row }">
+            <span>{{ row.annualInspectionDate }}</span>
+            <el-tag v-if="inspectionTip(row.annualInspectionDate)"
+                    :type="inspectionTip(row.annualInspectionDate).type"
+                    size="small" style="margin-left: 6px">
+              {{ inspectionTip(row.annualInspectionDate).text }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="maintenanceStatus" label="维修状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="statusMeta(row.maintenanceStatus).type">
+              {{ statusMeta(row.maintenanceStatus).label }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip />
+        <template #empty>暂无数据</template>
+      </el-table>
+
+      <!-- 分页 -->
+      <el-pagination class="forklift-archive__pagination" background
+                     layout="sizes, prev, pager, next, jumper"
+                     :total="total" :current-page="pageNo" :page-size="pageSize"
+                     :page-sizes="[10, 20, 50]"
+                     @current-change="handlePageChange" @size-change="handleSizeChange" />
+    </el-card>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js"></script>
+  <script src="./src/api.js"></script>
+  <script src="./src/page.js"></script>
+</body>
+</html>
